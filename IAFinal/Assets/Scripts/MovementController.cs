@@ -12,11 +12,21 @@ public class MovementController : MonoBehaviour
     public float avoidForce = 15f;
     public LayerMask obstacleMask;
 
-    private Vector3 velocity;
+    public Vector3 velocity;
     private Rigidbody rb;
 
     [Header("Target")]
     public Transform target;
+
+    [Header("Flocking")]
+    public float neighborRadius = 3f;
+    public float separationRadius = 1.2f;
+
+    public float cohesionWeight = 1f;
+    public float separationWeight = 1.5f;
+    public float alignmentWeight = 1f;
+
+    public LayerMask npcMask;
 
     void Awake()
     {
@@ -30,8 +40,15 @@ public class MovementController : MonoBehaviour
 
         Vector3 steering = Vector3.zero;
 
+        Collider[] neighbors = GetNeighbors();
+
         steering += Seek(target.position);
+        steering += Cohesion(neighbors) * cohesionWeight;
+        steering += Separation(neighbors) * separationWeight;
+        steering += Alignment(neighbors) * alignmentWeight;
         steering += ObstacleAvoidance();
+
+        steering = Vector3.ClampMagnitude(steering, maxForce);
 
         ApplyMovement(steering);
     }
@@ -92,4 +109,100 @@ public class MovementController : MonoBehaviour
         return avoidance;
     }
 
+    //Lo mantiene cerca del grupo
+    Vector3 Cohesion(Collider[] neighbors)
+    {
+        if (neighbors.Length == 0)
+            return Vector3.zero;
+
+        Vector3 center = Vector3.zero;
+        int count = 0;
+
+        //Calcula el centro promedio de todos los vecinos
+        foreach (var n in neighbors)
+        {
+            if (n.gameObject == gameObject) continue;
+
+            center += n.transform.position;
+            count++;
+        }
+
+        if (count == 0) return Vector3.zero;
+
+        center /= count;
+        Vector3 desired = center - rb.position;
+        desired.y = 0f;
+
+        return desired.normalized * maxSpeed - velocity;
+    }
+
+    //Para no chocar entre ellos
+    Vector3 Separation(Collider[] neighbors)
+    {
+        Vector3 force = Vector3.zero;
+
+        foreach (var n in neighbors)
+        {
+            if (n.gameObject == gameObject) continue;
+
+            Vector3 diff = rb.position - n.transform.position;
+            diff.y = 0f;
+
+            float dist = diff.magnitude;
+
+            //Movimiento mas fluido
+            if (dist < 0.01f) continue;
+
+            if (dist < separationRadius)
+            {
+                //Mientras mas cerca, mas fuerte la separacion
+                force += diff.normalized / dist;
+            }
+        }
+
+        return force * maxSpeed - velocity;
+    }
+
+    //Direccion promedio
+    Vector3 Alignment(Collider[] neighbors)
+    {
+        if (neighbors.Length == 0)
+            return Vector3.zero;
+
+        Vector3 avgVelocity = Vector3.zero;
+        int count = 0;
+
+        foreach (var n in neighbors)
+        {
+            if (n.gameObject == gameObject) continue;
+
+            MovementController mc = n.GetComponent<MovementController>();
+            if (mc == null) continue;
+
+            avgVelocity += mc.velocity;
+            count++;
+        }
+
+        if (count == 0) return Vector3.zero;
+
+        avgVelocity /= count;
+        avgVelocity.y = 0f;
+
+        return avgVelocity.normalized * maxSpeed - velocity;
+    }
+
+    //Obtiene los vecinos que esten dentro del radio
+    Collider[] GetNeighbors()
+    {
+        return Physics.OverlapSphere(rb.position, neighborRadius, npcMask);
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, neighborRadius);
+
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, separationRadius);
+    }
 }
