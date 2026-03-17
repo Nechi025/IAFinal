@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class MovementController : MonoBehaviour
+public class NPC : MonoBehaviour
 {
     [Header("Movement")]
     public float maxSpeed = 5f;
@@ -15,8 +15,8 @@ public class MovementController : MonoBehaviour
     public Vector3 velocity;
     private Rigidbody rb;
 
-    [Header("Target")]
-    public Transform target;
+    [Header("Leader")]
+    public Transform leader;
 
     [Header("Flocking")]
     public float neighborRadius = 3f;
@@ -35,14 +35,14 @@ public class MovementController : MonoBehaviour
 
     void Update()
     {
-        if (target == null)
+        if (leader == null)
             return;
 
         Vector3 steering = Vector3.zero;
 
         Collider[] neighbors = GetNeighbors();
 
-        steering += Seek(target.position);
+        steering += FollowLeader();
         steering += Cohesion(neighbors) * cohesionWeight;
         steering += Separation(neighbors) * separationWeight;
         steering += Alignment(neighbors) * alignmentWeight;
@@ -67,6 +67,19 @@ public class MovementController : MonoBehaviour
 
         Vector3 steering = desired - velocity;
         return Vector3.ClampMagnitude(steering, maxForce);
+    }
+
+    Vector3 FollowLeader()
+    {
+        Vector3 toLeader = leader.position - rb.position;
+        toLeader.y = 0f;
+
+        float distance = toLeader.magnitude;
+
+        if (distance < 1.5f) // distancia mínima
+            return Vector3.zero;
+
+        return Seek(leader.position);
     }
 
     void ApplyMovement(Vector3 steering)
@@ -176,7 +189,7 @@ public class MovementController : MonoBehaviour
         {
             if (n.gameObject == gameObject) continue;
 
-            MovementController mc = n.GetComponent<MovementController>();
+            NPC mc = n.GetComponent<NPC>();
             if (mc == null) continue;
 
             avgVelocity += mc.velocity;
