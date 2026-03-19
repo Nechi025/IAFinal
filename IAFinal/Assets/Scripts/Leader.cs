@@ -7,10 +7,15 @@ public class Leader : MonoBehaviour
     public float maxForce = 8f;
     public float arriveRadius = 0.5f;
 
+    [Header("Vision")]
+    public float viewDistance = 8f;
+    public float viewAngle = 120f;
+    public LayerMask obstacleMask;
+    public LayerMask enemyMask;
+
     [Header("Obstacle Avoidance")]
     public float avoidDistance = 2f;
     public float avoidForce = 15f;
-    public LayerMask obstacleMask;
 
     public Vector3 velocity;
     private Rigidbody rb;
@@ -27,6 +32,13 @@ public class Leader : MonoBehaviour
     {
         if (target == null)
             return;
+
+        Transform enemy = GetVisibleEnemy();
+
+        if (enemy != null)
+        {
+            Debug.Log(name + " ve a " + enemy.name);
+        }
 
         Vector3 steering = Vector3.zero;
 
@@ -92,5 +104,51 @@ public class Leader : MonoBehaviour
         Debug.DrawRay(origin, transform.forward * avoidDistance, Color.red);
 
         return avoidance;
+    }
+
+    Transform GetVisibleEnemy()
+    {
+        Collider[] hits = Physics.OverlapSphere(rb.position, viewDistance, enemyMask);
+
+        foreach (var hit in hits)
+        {
+            Vector3 dirToTarget = hit.transform.position - rb.position;
+            dirToTarget.y = 0f;
+
+            float angle = Vector3.Angle(transform.forward, dirToTarget);
+
+            //Revisa angulo
+            if (angle < viewAngle / 2f)
+            {
+                //Tira raycast
+                RaycastHit rayHit;
+                Vector3 origin = rb.position + Vector3.up * 0.5f;
+
+                if (Physics.Raycast(origin, dirToTarget.normalized, out rayHit, viewDistance))
+                {
+                    //Verifica que lo primero que toca es el enemigo
+                    if (rayHit.collider == hit)
+                    {
+                        return hit.transform;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        //Linea de vision
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(transform.position, viewDistance);
+
+        Vector3 left = Quaternion.Euler(0, -viewAngle / 2, 0) * transform.forward;
+        Vector3 right = Quaternion.Euler(0, viewAngle / 2, 0) * transform.forward;
+
+        Gizmos.color = Color.blue;
+        Gizmos.DrawRay(transform.position, left * viewDistance);
+        Gizmos.DrawRay(transform.position, right * viewDistance);
     }
 }
