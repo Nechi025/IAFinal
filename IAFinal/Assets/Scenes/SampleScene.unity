@@ -766,6 +766,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2097539095}
     m_Modifications:
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 594a298b38c1ca34da0797922ab60da9, type: 2}
     - target: {fileID: 1153572030409342343, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
       propertyPath: m_LocalPosition.x
       value: -4.664717
@@ -1228,6 +1232,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2097539095}
     m_Modifications:
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 594a298b38c1ca34da0797922ab60da9, type: 2}
     - target: {fileID: 1153572030409342343, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
       propertyPath: m_LocalPosition.x
       value: -6.710729
@@ -2021,6 +2029,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1390210462}
     m_Modifications:
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: d2fd64637b380ca479200de3324d9845, type: 2}
     - target: {fileID: 1153572030409342343, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
       propertyPath: m_LocalPosition.x
       value: 21.895283
@@ -2154,6 +2166,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2097539095}
     m_Modifications:
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[1]
+      value: 
+      objectReference: {fileID: 2100000, guid: 64799b2cdc07087499254eda8a1c09f5, type: 2}
     - target: {fileID: 1153572030409342343, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.7847171
@@ -2896,6 +2920,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2097539095}
     m_Modifications:
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 594a298b38c1ca34da0797922ab60da9, type: 2}
     - target: {fileID: 1153572030409342343, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
       propertyPath: m_LocalPosition.x
       value: -6.614717
@@ -3183,6 +3211,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2097539095}
     m_Modifications:
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 594a298b38c1ca34da0797922ab60da9, type: 2}
     - target: {fileID: 1153572030409342343, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
       propertyPath: m_LocalPosition.x
       value: -4.664717
@@ -3309,6 +3341,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2097539095}
     m_Modifications:
+    - target: {fileID: 434539256054857124, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 594a298b38c1ca34da0797922ab60da9, type: 2}
     - target: {fileID: 1153572030409342343, guid: 27d8b702c4d5af040a8d96951b2dcf54, type: 3}
       propertyPath: m_LocalPosition.x
       value: -2.8907285

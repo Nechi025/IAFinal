@@ -33,33 +33,62 @@ public class NPC : MonoBehaviour
 
     public LayerMask npcMask;
 
+    public enum NPCState
+    {
+        FollowLeader,
+        EngageEnemy,
+        SearchEnemy,
+        Flee
+    }
+
+    public NPCState currentState;
+
+    [Header("Combat")]
+    public float maxHealth = 100f;
+    public float currentHealth;
+
+    public float fleeThreshold = 30f;
+
+    private Transform currentEnemy;
+    private Vector3 lastKnownEnemyPosition;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
     }
 
+    void Start()
+    {
+        currentHealth = maxHealth;
+        currentState = NPCState.FollowLeader;
+    }
+
     void Update()
     {
-        if (leader == null)
-            return;
-
-        Transform enemy = GetVisibleEnemy();
-
-        if (enemy != null)
-        {
-            Debug.Log(name + " ve a " + enemy.name);
-        }
+        UpdateState();
 
         Vector3 steering = Vector3.zero;
 
-        Collider[] neighbors = GetNeighbors();
+        switch (currentState)
+        {
+            case NPCState.FollowLeader:
+                steering = FollowLeaderState();
+                break;
 
-        steering += FollowLeader();
-        steering += Cohesion(neighbors) * cohesionWeight;
-        steering += Separation(neighbors) * separationWeight;
-        steering += Alignment(neighbors) * alignmentWeight;
+            case NPCState.EngageEnemy:
+                steering = EngageEnemyState();
+                break;
+
+            case NPCState.SearchEnemy:
+                steering = SearchEnemyState();
+                break;
+
+            case NPCState.Flee:
+                steering = FleeState();
+                break;
+        }
+
         steering += ObstacleAvoidance();
-
         steering = Vector3.ClampMagnitude(steering, maxForce);
 
         ApplyMovement(steering);
@@ -252,6 +281,93 @@ public class NPC : MonoBehaviour
         }
 
         return null;
+    }
+
+    void UpdateState()
+    {
+        Transform enemy = GetVisibleEnemy();
+
+        //Prioriza sobrevivir si su vida pasa cierto umbral
+        if (currentHealth < fleeThreshold)
+        {
+            currentState = NPCState.Flee;
+            return;
+        }
+
+        //Si ve un enemigo lo ataca
+        if (enemy != null)
+        {
+            currentEnemy = enemy;
+            lastKnownEnemyPosition = enemy.position;
+            currentState = NPCState.EngageEnemy;
+            return;
+        }
+
+        //Busca a un enemigo si lo perdio de vista
+        if (currentEnemy != null)
+        {
+            currentState = NPCState.SearchEnemy;
+            return;
+        }
+
+        //Default
+        currentState = NPCState.FollowLeader;
+    }
+
+    Vector3 FollowLeaderState()
+    {
+        Collider[] neighbors = GetNeighbors();
+
+        Vector3 steering = Vector3.zero;
+
+        steering += FollowLeader();
+        steering += Cohesion(neighbors) * cohesionWeight;
+        steering += Separation(neighbors) * separationWeight;
+        steering += Alignment(neighbors) * alignmentWeight;
+
+        return steering;
+    }
+
+    Vector3 EngageEnemyState()
+    {
+        if (currentEnemy == null)
+            return Vector3.zero;
+
+        return Seek(currentEnemy.position);
+    }
+
+    //Va a la ultima posicion en donde perdio al enemigo
+    Vector3 SearchEnemyState()
+    {
+        Vector3 toLastPos = lastKnownEnemyPosition - rb.position;
+        toLastPos.y = 0f;
+
+        if (toLastPos.magnitude < 1f)
+        {
+            currentEnemy = null;
+            return Vector3.zero;
+        }
+
+        return Seek(lastKnownEnemyPosition);
+    }
+
+    Vector3 FleeState()
+    {
+        if (currentEnemy == null)
+            return FollowLeader();
+
+        Vector3 dir = rb.position - currentEnemy.position;
+        dir.y = 0f;
+
+        Vector3 targetPos = rb.position + dir.normalized * 5f;
+
+        return Seek(targetPos);
+    }
+
+    void OnGUI()
+    {
+        Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position);
+        GUI.Label(new Rect(screenPos.x, Screen.height - screenPos.y, 100, 20), currentState.ToString());
     }
 
     void OnDrawGizmosSelected()
