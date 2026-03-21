@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class NPC : MonoBehaviour
 {
@@ -6,6 +6,7 @@ public class NPC : MonoBehaviour
     public float maxSpeed = 5f;
     public float maxForce = 8f;
     public float arriveRadius = 0.5f;
+    public float drag = 4f; //Para no patinar
 
     [Header("Vision")]
     public float viewDistance = 8f;
@@ -32,6 +33,13 @@ public class NPC : MonoBehaviour
     public float alignmentWeight = 1f;
 
     public LayerMask npcMask;
+
+    [Header("Attack")]
+    public float attackRange = 1.5f;
+    public float attackDamage = 10f;
+    public float attackCooldown = 1f;
+
+    private float attackTimer = 0f;
 
     public enum NPCState
     {
@@ -88,6 +96,8 @@ public class NPC : MonoBehaviour
                 break;
         }
 
+        attackTimer -= Time.deltaTime;
+
         steering += ObstacleAvoidance();
         steering = Vector3.ClampMagnitude(steering, maxForce);
 
@@ -126,6 +136,8 @@ public class NPC : MonoBehaviour
     void ApplyMovement(Vector3 steering)
     {
         velocity += steering * Time.deltaTime;
+
+        velocity = Vector3.Lerp(velocity, Vector3.zero, drag * Time.deltaTime);
         velocity.y = 0f;
         velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
 
@@ -333,7 +345,48 @@ public class NPC : MonoBehaviour
         if (currentEnemy == null)
             return Vector3.zero;
 
+        float distance = Vector3.Distance(rb.position, currentEnemy.position);
+
+        //Si esta en rango ataca
+        if (distance <= attackRange)
+        {
+            Attack(currentEnemy);
+            return Vector3.zero; //Hace que se quede en el lugar
+        }
+
+        //Si no esta a rango seek
         return Seek(currentEnemy.position);
+    }
+
+    void Attack(Transform enemy)
+    {
+        //CD
+        if (attackTimer > 0f)
+            return;
+
+        NPC enemyMC = enemy.GetComponent<NPC>();
+
+        if (enemyMC != null)
+        {
+            enemyMC.TakeDamage(attackDamage);
+        }
+
+        attackTimer = attackCooldown;
+    }
+
+    public void TakeDamage(float amount)
+    {
+        currentHealth -= amount;
+
+        if (currentHealth <= 0f)
+        {
+            Die();
+        }
+    }
+
+    void Die()
+    {
+        Destroy(gameObject);
     }
 
     //Va a la ultima posicion en donde perdio al enemigo
@@ -368,6 +421,7 @@ public class NPC : MonoBehaviour
     {
         Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position);
         GUI.Label(new Rect(screenPos.x, Screen.height - screenPos.y, 100, 20), currentState.ToString());
+        GUI.Label(new Rect(screenPos.x, Screen.height - screenPos.y + 15, 100, 20), currentHealth.ToString("F0"));
     }
 
     void OnDrawGizmosSelected()

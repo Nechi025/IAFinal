@@ -6,6 +6,7 @@ public class Leader : MonoBehaviour
     public float maxSpeed = 5f;
     public float maxForce = 8f;
     public float arriveRadius = 0.5f;
+    public float drag = 4f; //Para no patinar
 
     [Header("Vision")]
     public float viewDistance = 8f;
@@ -69,6 +70,8 @@ public class Leader : MonoBehaviour
     void ApplyMovement(Vector3 steering)
     {
         velocity += steering * Time.deltaTime;
+
+        velocity = Vector3.Lerp(velocity, Vector3.zero, drag * Time.deltaTime);
         velocity.y = 0f;
         velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
 
