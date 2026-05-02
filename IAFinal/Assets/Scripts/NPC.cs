@@ -21,6 +21,7 @@ public class NPC : MonoBehaviour
 
     public Vector3 velocity;
     private Rigidbody rb;
+    private Animator anim;
 
     [Header("Leader")]
     public Transform leader;
@@ -64,6 +65,7 @@ public class NPC : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        anim = GetComponentInChildren<Animator>();
     }
 
     void Start()
@@ -75,6 +77,7 @@ public class NPC : MonoBehaviour
     void Update()
     {
         UpdateState();
+        UpdateAnimations();
 
         Vector3 steering = Vector3.zero;
 
@@ -104,6 +107,47 @@ public class NPC : MonoBehaviour
 
         ApplyMovement(steering);
     }
+
+    void UpdateAnimations()
+    {
+        if (anim == null) return;
+
+        // Reset all
+        anim.SetBool("isWalking", false);
+        anim.SetBool("isAttacking", false);
+        anim.SetBool("isFleeing", false);
+
+        switch (currentState)
+        {
+            case NPCState.FollowLeader:
+            case NPCState.SearchEnemy:
+                if (velocity.magnitude > 0.1f)
+                    anim.SetBool("isWalking", true);
+                break;
+
+            case NPCState.EngageEnemy:
+                if (currentEnemy != null)
+                {
+                    float distance = Vector3.Distance(rb.position, currentEnemy.position);
+
+                    if (distance <= attackRange)
+                    {
+                        anim.SetBool("isAttacking", true);
+                    }
+                    else if (velocity.magnitude > 0.1f)
+                    {
+                        anim.SetBool("isWalking", true);
+                    }
+                }
+                break;
+
+            case NPCState.Flee:
+                anim.SetBool("isFleeing", true);
+                break;
+        }
+    }
+
+
 
     //Steering Seek
     Vector3 Seek(Vector3 targetPos)
@@ -364,6 +408,11 @@ public class NPC : MonoBehaviour
         //CD
         if (attackTimer > 0f)
             return;
+
+        if (anim != null)
+        {
+            anim.SetTrigger("attack");
+        }
 
         NPC enemyMC = enemy.GetComponent<NPC>();
         Leader enemyL = enemy.GetComponent<Leader>();

@@ -18,6 +18,7 @@ public class Leader : MonoBehaviour
     public LayerMask enemyMask;
 
     public float awarenessRadius = 10f;
+    private Animator anim;
 
     [Header("Obstacle Avoidance")]
     public float avoidDistance = 2f;
