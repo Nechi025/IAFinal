@@ -1,3 +1,4 @@
+﻿using Unity.VisualScripting;
 using UnityEngine;
 
 public class Leader : MonoBehaviour
@@ -7,12 +8,16 @@ public class Leader : MonoBehaviour
     public float maxForce = 8f;
     public float arriveRadius = 0.5f;
     public float drag = 4f; //Para no patinar
+    public float panicDistance = 6f;
 
     [Header("Vision")]
     public float viewDistance = 8f;
     public float viewAngle = 120f;
     public LayerMask obstacleMask;
+    public LayerMask allyMask;
     public LayerMask enemyMask;
+
+    public float awarenessRadius = 10f;
 
     [Header("Obstacle Avoidance")]
     public float avoidDistance = 2f;
@@ -24,28 +29,78 @@ public class Leader : MonoBehaviour
     [Header("Target")]
     public Transform target;
 
+    [Header("Combat")]
+    public float maxHealth = 100f;
+    public float currentHealth;
+
+    public float fleeThreshold = 30f;
+
+    //private Transform currentEnemy;
+    //private Vector3 lastKnownEnemyPosition;
+
+    [Header("Leader AI")]
+    public float decisionInterval = 2f;
+    private float decisionTimer;
+    public Vector3 safePoint;
+
+    public float retreatHealthThreshold = 40f;
+    public enum LeaderState
+    {
+        Advance,
+        Attack,
+        Regroup,
+        Defensive,
+        Retreat
+    }
+
+    public LeaderState currentLeaderState;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
     }
 
+    private void Start()
+    {
+        currentHealth = maxHealth;
+    }
+
     void Update()
     {
-        if (target == null)
-            return;
+        decisionTimer -= Time.deltaTime;
 
-        Transform enemy = GetVisibleEnemy();
-
-        if (enemy != null)
+        if (decisionTimer <= 0f)
         {
-            Debug.Log(name + " ve a " + enemy.name);
+            DecideNextState();
+            decisionTimer = decisionInterval;
         }
 
         Vector3 steering = Vector3.zero;
 
-        steering += Seek(target.position);
-        steering += ObstacleAvoidance();
+        switch (currentLeaderState)
+        {
+            case LeaderState.Advance:
+                steering = AdvanceState();
+                break;
 
+            case LeaderState.Attack:
+                steering = AttackState();
+                break;
+
+            case LeaderState.Regroup:
+                steering = RegroupState();
+                break;
+
+            case LeaderState.Defensive:
+                steering = DefensiveState();
+                break;
+
+            case LeaderState.Retreat:
+                steering = RetreatState();
+                break;
+        }
+
+        steering += ObstacleAvoidance();
         steering = Vector3.ClampMagnitude(steering, maxForce);
 
         ApplyMovement(steering);
@@ -141,6 +196,148 @@ public class Leader : MonoBehaviour
         return null;
     }
 
+    Transform GetClosestEnemy()
+    {
+        Collider[] hits = Physics.OverlapSphere(rb.position, viewDistance, enemyMask);
+
+        Transform closest = null;
+        float minDist = Mathf.Infinity;
+
+        foreach (var hit in hits)
+        {
+            float dist = Vector3.Distance(rb.position, hit.transform.position);
+
+            if (dist < minDist && dist < panicDistance)
+            {
+                minDist = dist;
+                closest = hit.transform;
+            }
+        }
+
+        return closest;
+    }
+
+    Vector3 AdvanceState()
+    {
+        return Seek(target.position);
+    }
+    Vector3 AttackState()
+    {
+        Transform enemy = GetVisibleEnemy();
+
+        if (enemy != null)
+            return Seek(enemy.position);
+
+        return AdvanceState();
+    }
+
+    public void TakeDamage(float amount)
+    {
+        currentHealth -= amount;
+
+        if (currentHealth <= 0f)
+        {
+            Die();
+        }
+    }
+
+    void Die()
+    {
+        Destroy(gameObject);
+    }
+
+    Vector3 RegroupState()
+    {
+        // quedarse quieto o moverse lento
+        return Vector3.zero;
+    }
+    Vector3 DefensiveState()
+    {
+        Transform enemy = GetClosestEnemy();
+
+        if (enemy == null)
+            return AdvanceState();
+
+        Vector3 dir = transform.position - enemy.position;
+        dir.y = 0f;
+
+        return Seek(transform.position + dir.normalized * 3f);
+    }
+    Vector3 RetreatState()
+    {
+        return Seek(safePoint);
+    }
+
+    void DecideNextState()
+    {
+        float healthFactor = currentHealth / maxHealth;
+
+        int allies = CountNearbyAllies();
+        int enemies = CountNearbyEnemies();
+
+        //Pesos
+        float weightAttack = 0f;
+        float weightDefensive = 0f;
+        float weightRegroup = 0f;
+        float weightRetreat = 0f;
+        float weightAdvance = 0f;
+
+        if (healthFactor > 0.6f && allies >= enemies)
+            weightAttack = 3f;
+
+        if (healthFactor > 0.4f)
+            weightAdvance = 2f;
+
+        if (allies < enemies)
+            weightRegroup = 3f;
+
+        if (healthFactor < 0.5f)
+            weightDefensive = 2f;
+
+        if (healthFactor < 0.3f)
+            weightRetreat = 5f;
+
+        //Roulette wheel
+        float total = weightAttack + weightDefensive + weightRegroup + weightRetreat + weightAdvance;
+
+        float rand = Random.Range(0f, total);
+
+        if ((rand -= weightAttack) <= 0f)
+            currentLeaderState = LeaderState.Attack;
+        else if ((rand -= weightAdvance) <= 0f)
+            currentLeaderState = LeaderState.Advance;
+        else if ((rand -= weightRegroup) <= 0f)
+            currentLeaderState = LeaderState.Regroup;
+        else if ((rand -= weightDefensive) <= 0f)
+            currentLeaderState = LeaderState.Defensive;
+        else
+            currentLeaderState = LeaderState.Retreat;
+    }
+
+    int CountNearbyAllies()
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, awarenessRadius, allyMask);
+
+        int count = 0;
+
+        foreach (var hit in hits)
+        {
+            if (hit.gameObject != gameObject) //No se cuenta a si mismo
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    int CountNearbyEnemies()
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, awarenessRadius, enemyMask);
+
+        return hits.Length;
+    }
+
     void OnDrawGizmosSelected()
     {
         //Linea de vision
@@ -153,5 +350,11 @@ public class Leader : MonoBehaviour
         Gizmos.color = Color.blue;
         Gizmos.DrawRay(transform.position, left * viewDistance);
         Gizmos.DrawRay(transform.position, right * viewDistance);
+    }
+
+    private void OnGUI()
+    {
+        Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position);
+        GUI.Label(new Rect(screenPos.x, Screen.height - screenPos.y - 15, 120, 20), currentLeaderState.ToString());
     }
 }

@@ -7,6 +7,7 @@ public class NPC : MonoBehaviour
     public float maxForce = 8f;
     public float arriveRadius = 0.5f;
     public float drag = 4f; //Para no patinar
+    public float panicDistance = 6f;
 
     [Header("Vision")]
     public float viewDistance = 8f;
@@ -365,12 +366,15 @@ public class NPC : MonoBehaviour
             return;
 
         NPC enemyMC = enemy.GetComponent<NPC>();
+        Leader enemyL = enemy.GetComponent<Leader>();
 
         if (enemyMC != null)
         {
             enemyMC.TakeDamage(attackDamage);
         }
-
+        else {
+            enemyL.TakeDamage(attackDamage);
+             }
         attackTimer = attackCooldown;
     }
 
@@ -406,15 +410,41 @@ public class NPC : MonoBehaviour
 
     Vector3 FleeState()
     {
-        if (currentEnemy == null)
-            return FollowLeader();
+        Transform threat = GetClosestEnemy();
 
-        Vector3 dir = rb.position - currentEnemy.position;
+        if (threat == null)
+        {
+            //Si no hay enemigos vuelve al líder
+            return FollowLeader();
+        }
+
+        Vector3 dir = rb.position - threat.position;
         dir.y = 0f;
 
-        Vector3 targetPos = rb.position + dir.normalized * 5f;
+        Vector3 targetPos = rb.position + dir.normalized * 6f;
 
         return Seek(targetPos);
+    }
+
+    Transform GetClosestEnemy()
+    {
+        Collider[] hits = Physics.OverlapSphere(rb.position, viewDistance, enemyMask);
+
+        Transform closest = null;
+        float minDist = Mathf.Infinity;
+
+        foreach (var hit in hits)
+        {
+            float dist = Vector3.Distance(rb.position, hit.transform.position);
+
+            if (dist < minDist && dist < panicDistance)
+                {
+                minDist = dist;
+                closest = hit.transform;
+            }
+        }
+
+        return closest;
     }
 
     void OnGUI()
