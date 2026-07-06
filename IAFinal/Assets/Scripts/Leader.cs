@@ -42,7 +42,7 @@ public class Leader : MonoBehaviour
     [Header("Leader AI")]
     public float decisionInterval = 2f;
     private float decisionTimer;
-    public Vector3 safePoint;
+    public Transform safePoint;
 
     public float retreatHealthThreshold = 40f;
     public enum LeaderState
@@ -266,9 +266,10 @@ public class Leader : MonoBehaviour
     }
     Vector3 RetreatState()
     {
-        return Seek(safePoint);
+        return Seek(safePoint.transform.position);
     }
 
+    //Deciciones en base a la vida restante
     void DecideNextState()
     {
         float healthFactor = currentHealth / maxHealth;
