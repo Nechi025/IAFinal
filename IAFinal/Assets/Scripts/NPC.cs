@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class NPC : MonoBehaviour
 {
@@ -43,6 +44,17 @@ public class NPC : MonoBehaviour
 
     private float attackTimer = 0f;
 
+    [Header("Pathfinding")]
+    public float directMoveDistance = 4f;
+
+    private List<Node> currentPath;
+    private int pathIndex;
+
+    private float pathTimer;
+    public float pathRefreshRate = 1f;
+
+    private Pathfinding pathfinding;
+
     public enum NPCState
     {
         FollowLeader,
@@ -72,6 +84,7 @@ public class NPC : MonoBehaviour
     {
         currentHealth = maxHealth;
         currentState = NPCState.FollowLeader;
+        pathfinding = FindObjectOfType<Pathfinding>();
     }
 
     void Update()
@@ -209,7 +222,7 @@ public class NPC : MonoBehaviour
             normal.y = 0f;
             normal.Normalize();
 
-            Vector3 away = Vector3.Reflect(transform.forward, normal);
+            Vector3 away = hit.normal;
             away.y = 0f;
 
             avoidance += away.normalized * avoidForce;
@@ -377,7 +390,18 @@ public class NPC : MonoBehaviour
 
         Vector3 steering = Vector3.zero;
 
-        steering += FollowLeader();
+        //Movimiento principal
+        if (NeedsPathfinding(leader.position))
+        {
+            UpdatePath(leader.position);
+            steering += FollowPath();
+        }
+        else
+        {
+            steering += FollowLeader();
+        }
+
+        //Flocking
         steering += Cohesion(neighbors) * cohesionWeight;
         steering += Separation(neighbors) * separationWeight;
         steering += Alignment(neighbors) * alignmentWeight;
@@ -400,6 +424,12 @@ public class NPC : MonoBehaviour
         }
 
         //Si no esta a rango seek
+        if (NeedsPathfinding(currentEnemy.position))
+        {
+            UpdatePath(currentEnemy.position);
+            return FollowPath();
+        }
+
         return Seek(currentEnemy.position);
     }
 
@@ -472,6 +502,12 @@ public class NPC : MonoBehaviour
 
         Vector3 targetPos = rb.position + dir.normalized * 6f;
 
+        if (NeedsPathfinding(targetPos))
+        {
+            UpdatePath(targetPos);
+            return FollowPath();
+        }
+
         return Seek(targetPos);
     }
 
@@ -494,6 +530,60 @@ public class NPC : MonoBehaviour
         }
 
         return closest;
+    }
+
+    Vector3 FollowPath()
+    {
+        if (currentPath == null || currentPath.Count == 0)
+            return Vector3.zero;
+
+        if (pathIndex >= currentPath.Count)
+            return Vector3.zero;
+
+        Vector3 waypoint = currentPath[pathIndex].worldPosition;
+
+        if (Vector3.Distance(rb.position, waypoint) < 0.5f)
+        {
+            pathIndex++;
+        }
+
+        return Seek(waypoint);
+    }
+
+    void UpdatePath(Vector3 targetPos)
+    {
+        pathTimer -= Time.deltaTime;
+
+        if (pathTimer > 0f)
+            return;
+
+        currentPath = pathfinding.FindPath(rb.position, targetPos);
+
+        pathIndex = 0;
+
+        pathTimer = pathRefreshRate;
+    }
+
+    bool NeedsPathfinding(Vector3 targetPos)
+    {
+        Vector3 dir = targetPos - rb.position;
+        dir.y = 0f;
+
+        //Si esta cerca, steering normal
+        if (dir.magnitude < directMoveDistance)
+            return false;
+
+        //Raycast directo
+        if (!Physics.Raycast(
+            rb.position + Vector3.up * 0.5f,
+            dir.normalized,
+            dir.magnitude,
+            obstacleMask))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     void OnGUI()
@@ -522,5 +612,23 @@ public class NPC : MonoBehaviour
 
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, separationRadius);
+
+        if (currentPath == null || currentPath.Count == 0)
+            return;
+
+        Gizmos.color = Color.green;
+
+        for (int i = 0; i < currentPath.Count; i++)
+        {
+            Gizmos.DrawSphere(currentPath[i].worldPosition, 0.15f);
+
+            if (i < currentPath.Count - 1)
+            {
+                Gizmos.DrawLine(
+                    currentPath[i].worldPosition,
+                    currentPath[i + 1].worldPosition
+                );
+            }
+        }
     }
 }
