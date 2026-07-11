@@ -1,4 +1,5 @@
-﻿using Unity.VisualScripting;
+﻿using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class Leader : MonoBehaviour
@@ -36,6 +37,17 @@ public class Leader : MonoBehaviour
 
     public float fleeThreshold = 30f;
 
+    [Header("Pathfinding")]
+    public float directMoveDistance = 4f;
+
+    private List<Node> currentPath;
+    private int pathIndex;
+
+    private float pathTimer;
+    public float pathRefreshRate = 1f;
+
+    private Pathfinding pathfinding;
+
     //private Transform currentEnemy;
     //private Vector3 lastKnownEnemyPosition;
 
@@ -64,6 +76,7 @@ public class Leader : MonoBehaviour
     private void Start()
     {
         currentHealth = maxHealth;
+        pathfinding = FindObjectOfType<Pathfinding>();
     }
 
     void Update()
@@ -220,14 +233,14 @@ public class Leader : MonoBehaviour
 
     Vector3 AdvanceState()
     {
-        return Seek(target.position);
+        return MoveTowards(target.position);
     }
     Vector3 AttackState()
     {
         Transform enemy = GetVisibleEnemy();
 
         if (enemy != null)
-            return Seek(enemy.position);
+            return MoveTowards(enemy.position);
 
         return AdvanceState();
     }
@@ -249,7 +262,7 @@ public class Leader : MonoBehaviour
 
     Vector3 RegroupState()
     {
-        // quedarse quieto o moverse lento
+        //Quedarse quieto o moverse lento
         return Vector3.zero;
     }
     Vector3 DefensiveState()
@@ -262,11 +275,77 @@ public class Leader : MonoBehaviour
         Vector3 dir = transform.position - enemy.position;
         dir.y = 0f;
 
-        return Seek(transform.position + dir.normalized * 3f);
+        return MoveTowards(transform.position + dir.normalized * 3f);
     }
     Vector3 RetreatState()
     {
-        return Seek(safePoint.transform.position);
+        return MoveTowards(safePoint.transform.position);
+    }
+
+    Vector3 FollowPath()
+    {
+        if (currentPath == null || currentPath.Count == 0)
+            return Vector3.zero;
+
+        if (pathIndex >= currentPath.Count)
+            return Vector3.zero;
+
+        Vector3 waypoint = currentPath[pathIndex].worldPosition;
+
+        if (Vector3.Distance(rb.position, waypoint) < 0.5f)
+        {
+            pathIndex++;
+        }
+
+        return Seek(waypoint);
+    }
+
+    void UpdatePath(Vector3 targetPos)
+    {
+        pathTimer -= Time.deltaTime;
+
+        if (pathTimer > 0f)
+            return;
+
+        currentPath = pathfinding.FindPath(rb.position, targetPos);
+
+        pathIndex = 0;
+
+        pathTimer = pathRefreshRate;
+    }
+
+    bool NeedsPathfinding(Vector3 targetPos)
+    {
+        Vector3 dir = targetPos - rb.position;
+        dir.y = 0f;
+
+        //Si esta cerca, steering normal
+        if (dir.magnitude < directMoveDistance)
+            return false;
+
+        //Raycast directo
+        if (!Physics.Raycast(
+            rb.position + Vector3.up * 0.5f,
+            dir.normalized,
+            dir.magnitude,
+            obstacleMask))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    //Funcion para verificar si hace falta o no usar A*
+    Vector3 MoveTowards(Vector3 targetPosition)
+    {
+        if (NeedsPathfinding(targetPosition))
+        {
+            UpdatePath(targetPosition);
+            return FollowPath();
+        }
+
+        return Seek(targetPosition);
     }
 
     //Deciciones en base a la vida restante
@@ -352,6 +431,21 @@ public class Leader : MonoBehaviour
         Gizmos.color = Color.blue;
         Gizmos.DrawRay(transform.position, left * viewDistance);
         Gizmos.DrawRay(transform.position, right * viewDistance);
+
+        Gizmos.color = Color.green;
+
+        for (int i = 0; i < currentPath.Count; i++)
+        {
+            Gizmos.DrawSphere(currentPath[i].worldPosition, 0.15f);
+
+            if (i < currentPath.Count - 1)
+            {
+                Gizmos.DrawLine(
+                    currentPath[i].worldPosition,
+                    currentPath[i + 1].worldPosition
+                );
+            }
+        }
     }
 
     private void OnGUI()
