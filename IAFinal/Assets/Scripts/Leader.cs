@@ -37,6 +37,13 @@ public class Leader : MonoBehaviour
 
     public float fleeThreshold = 30f;
 
+    [Header("Attack")]
+    public float attackRange = 1.5f;
+    public float attackDamage = 10f;
+    public float attackCooldown = 1f;
+
+    private float attackTimer = 0f;
+
     [Header("Pathfinding")]
     public float directMoveDistance = 4f;
 
@@ -239,11 +246,44 @@ public class Leader : MonoBehaviour
     {
         Transform enemy = GetVisibleEnemy();
 
-        if (enemy != null)
-            return MoveTowards(enemy.position);
+        if (enemy == null)
+            return AdvanceState();
 
-        return AdvanceState();
+        float distance = Vector3.Distance(transform.position, enemy.position);
+
+        if (distance <= attackRange)
+        {
+            Attack(enemy);
+            return Vector3.zero;
+        }
+
+        return MoveTowards(enemy.position);
     }
+    void Attack(Transform enemy)
+    {
+        //CD
+        if (attackTimer > 0f)
+            return;
+
+        if (anim != null)
+        {
+            anim.SetTrigger("attack");
+        }
+
+        NPC enemyMC = enemy.GetComponent<NPC>();
+        Leader enemyL = enemy.GetComponent<Leader>();
+
+        if (enemyMC != null)
+        {
+            enemyMC.TakeDamage(attackDamage);
+        }
+        else
+        {
+            enemyL.TakeDamage(attackDamage);
+        }
+        attackTimer = attackCooldown;
+    }
+
 
     public void TakeDamage(float amount)
     {
@@ -262,7 +302,6 @@ public class Leader : MonoBehaviour
 
     Vector3 RegroupState()
     {
-        //Quedarse quieto o moverse lento
         return Vector3.zero;
     }
     Vector3 DefensiveState()
