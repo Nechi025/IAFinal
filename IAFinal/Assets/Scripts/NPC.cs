@@ -180,12 +180,15 @@ public class NPC : MonoBehaviour
 
     Vector3 FollowLeader()
     {
+        if (leader == null)
+            return Vector3.zero;
+
         Vector3 toLeader = leader.position - rb.position;
         toLeader.y = 0f;
 
         float distance = toLeader.magnitude;
 
-        if (distance < 1.5f) //Distancia minima
+        if (distance < 1.5f)
             return Vector3.zero;
 
         return Seek(leader.position);
@@ -381,11 +384,17 @@ public class NPC : MonoBehaviour
         }
 
         //Default
-        currentState = NPCState.FollowLeader;
+        if (leader != null)
+        {
+            currentState = NPCState.FollowLeader;
+        }
     }
 
     Vector3 FollowLeaderState()
     {
+        if (leader == null)
+            return Vector3.zero;
+
         Collider[] neighbors = GetNeighbors();
 
         Vector3 steering = Vector3.zero;
@@ -439,11 +448,7 @@ public class NPC : MonoBehaviour
         if (attackTimer > 0f)
             return;
 
-        if (anim != null)
-        {
-            anim.SetTrigger("attack");
-        }
-
+      
         NPC enemyMC = enemy.GetComponent<NPC>();
         Leader enemyL = enemy.GetComponent<Leader>();
 
@@ -451,15 +456,22 @@ public class NPC : MonoBehaviour
         {
             enemyMC.TakeDamage(attackDamage);
         }
-        else {
+        else if (enemyL != null)
+        {
             enemyL.TakeDamage(attackDamage);
-             }
+        }
         attackTimer = attackCooldown;
     }
 
     public void TakeDamage(float amount)
     {
         currentHealth -= amount;
+
+        if (anim != null)
+        {
+            anim.ResetTrigger("Damaged");
+            anim.SetTrigger("Damaged");
+        }
 
         if (currentHealth <= 0f)
         {
@@ -494,6 +506,8 @@ public class NPC : MonoBehaviour
         if (threat == null)
         {
             //Si no hay enemigos vuelve al líder
+            if (leader == null)
+                return Vector3.zero;
             return FollowLeader();
         }
 

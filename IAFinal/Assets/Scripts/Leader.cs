@@ -19,7 +19,6 @@ public class Leader : MonoBehaviour
     public LayerMask enemyMask;
 
     public float awarenessRadius = 10f;
-    private Animator anim;
 
     [Header("Obstacle Avoidance")]
     public float avoidDistance = 2f;
@@ -27,6 +26,7 @@ public class Leader : MonoBehaviour
 
     public Vector3 velocity;
     private Rigidbody rb;
+    private Animator anim;
 
     [Header("Target")]
     public Transform target;
@@ -78,6 +78,7 @@ public class Leader : MonoBehaviour
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        anim = GetComponentInChildren<Animator>();
     }
 
     private void Start()
@@ -90,12 +91,15 @@ public class Leader : MonoBehaviour
     {
         decisionTimer -= Time.deltaTime;
 
+        UpdateAnimations();
+
         if (decisionTimer <= 0f)
         {
             DecideNextState();
             decisionTimer = decisionInterval;
         }
 
+        attackTimer -= Time.deltaTime;
         Vector3 steering = Vector3.zero;
 
         switch (currentLeaderState)
@@ -143,6 +147,57 @@ public class Leader : MonoBehaviour
         return Vector3.ClampMagnitude(steering, maxForce);
     }
 
+
+    void UpdateAnimations()
+    {
+        if (anim == null) return;
+
+        anim.SetBool("isWalking", false);
+        anim.SetBool("isAttacking", false);
+        anim.SetBool("isFleeing", false);
+
+        switch (currentLeaderState)
+        {
+            case LeaderState.Advance:
+                if (velocity.magnitude > 0.1f)
+                    anim.SetBool("isWalking", true);
+                break;
+
+            case LeaderState.Attack:
+                Transform enemy = GetVisibleEnemy();
+
+                if (enemy != null)
+                {
+                    float distance = Vector3.Distance(transform.position, enemy.position);
+
+                    if (distance <= attackRange)
+                    {
+                        Debug.Log(gameObject.name + " ATTACKING");
+                        anim.SetBool("isAttacking", true);
+                    }
+                    else if (velocity.magnitude > 0.1f)
+                    {
+                        anim.SetBool("isWalking", true);
+                    }
+                }
+                else if (velocity.magnitude > 0.1f)
+                {
+                    anim.SetBool("isWalking", true);
+                }
+                break;
+
+            case LeaderState.Defensive:
+            case LeaderState.Regroup:
+                if (velocity.magnitude > 0.1f)
+                    anim.SetBool("isWalking", true);
+                break;
+
+            case LeaderState.Retreat:
+                anim.SetBool("isFleeing", true);
+                break;
+        }
+    }
+
     void ApplyMovement(Vector3 steering)
     {
         velocity += steering * Time.deltaTime;
@@ -158,6 +213,8 @@ public class Leader : MonoBehaviour
             rb.MoveRotation(Quaternion.LookRotation(velocity));
         }
     }
+
+   
 
     Vector3 ObstacleAvoidance()
     {
@@ -240,8 +297,12 @@ public class Leader : MonoBehaviour
 
     Vector3 AdvanceState()
     {
+        if (target == null)
+            return Vector3.zero;
+
         return MoveTowards(target.position);
     }
+
     Vector3 AttackState()
     {
         Transform enemy = GetVisibleEnemy();
@@ -265,10 +326,6 @@ public class Leader : MonoBehaviour
         if (attackTimer > 0f)
             return;
 
-        if (anim != null)
-        {
-            anim.SetTrigger("attack");
-        }
 
         NPC enemyMC = enemy.GetComponent<NPC>();
         Leader enemyL = enemy.GetComponent<Leader>();
@@ -288,6 +345,12 @@ public class Leader : MonoBehaviour
     public void TakeDamage(float amount)
     {
         currentHealth -= amount;
+
+        if (anim != null)
+        {
+            anim.ResetTrigger("Damaged");
+            anim.SetTrigger("Damaged");
+        }
 
         if (currentHealth <= 0f)
         {
@@ -318,7 +381,10 @@ public class Leader : MonoBehaviour
     }
     Vector3 RetreatState()
     {
-        return MoveTowards(safePoint.transform.position);
+        if (safePoint == null)
+            return Vector3.zero;
+
+        return MoveTowards(safePoint.position);
     }
 
     Vector3 FollowPath()
@@ -383,6 +449,8 @@ public class Leader : MonoBehaviour
             UpdatePath(targetPosition);
             return FollowPath();
         }
+
+
 
         return Seek(targetPosition);
     }
