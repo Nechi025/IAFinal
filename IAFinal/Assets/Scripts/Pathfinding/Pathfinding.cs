@@ -56,9 +56,9 @@ public class Pathfinding : MonoBehaviour
             //Llego al destino
             if (currentNode == targetNode)
             {
-                Debug.Log("Path encontrado");
+                //Debug.Log("Path encontrado");
                 currentPath = RetracePath(startNode, targetNode);
-                Debug.Log("Nodos en path: " + currentPath.Count);
+                //Debug.Log("Nodos en path: " + currentPath.Count);
                 return currentPath;
             }
 

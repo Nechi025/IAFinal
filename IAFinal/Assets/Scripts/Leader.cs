@@ -55,9 +55,6 @@ public class Leader : MonoBehaviour
 
     private Pathfinding pathfinding;
 
-    //private Transform currentEnemy;
-    //private Vector3 lastKnownEnemyPosition;
-
     [Header("Leader AI")]
     public float decisionInterval = 2f;
     private float decisionTimer;
@@ -358,8 +355,10 @@ public class Leader : MonoBehaviour
         }
     }
 
-    void Die()
+    public void Die()
     {
+        GameManager.Instance.OnLeaderDied(this);
+
         Destroy(gameObject);
     }
 
@@ -555,9 +554,9 @@ public class Leader : MonoBehaviour
         }
     }
 
-    private void OnGUI()
+    /*private void OnGUI()
     {
         Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position);
         GUI.Label(new Rect(screenPos.x, Screen.height - screenPos.y - 15, 120, 20), currentLeaderState.ToString());
-    }
+    }*/
 }

@@ -53,7 +53,7 @@ public class GridManager : MonoBehaviour
 
                 if (!walkable)
                 {
-                    Debug.Log("Obstacle detected at: " + worldPoint);
+                    //Debug.Log("Obstacle detected at: " + worldPoint);
                 }
             }
         }

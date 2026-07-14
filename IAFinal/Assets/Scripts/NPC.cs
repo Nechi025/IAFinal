@@ -600,12 +600,12 @@ public class NPC : MonoBehaviour
         return true;
     }
 
-    void OnGUI()
+    /*void OnGUI()
     {
         Vector3 screenPos = Camera.main.WorldToScreenPoint(transform.position);
         GUI.Label(new Rect(screenPos.x, Screen.height - screenPos.y, 100, 20), currentState.ToString());
         GUI.Label(new Rect(screenPos.x, Screen.height - screenPos.y + 15, 100, 20), currentHealth.ToString("F0"));
-    }
+    }*/
 
     void OnDrawGizmosSelected()
     {
